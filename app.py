@@ -51,8 +51,7 @@ df['IsActiveMember'] = df['IsActiveMember'].astype(int)
 # Create segmentation fields
 df['AGE_GROUP'] = pd.cut(df['AGE'], bins=[0, 30, 45, 60, 120], 
                         labels=['<30', '30-45', '46-60', '60+'])
-df['CREDIT_SCORE_BAND'] = pd.cut(df['CREDITSCORE'], bins=[300, 600, 750, 850], 
-                                labels=['Low', 'Medium', 'High'])
+df['CREDIT_SCORE_BAND'] = pd.cut(df['CreditScore'], bins=[300, 600, 750, 850], labels=['Low', 'Medium', 'High'])
 df['TENURE_GROUP'] = pd.cut(df['TENURE'], bins=[0, 2, 5, 100], 
                           labels=['New', 'Mid-term', 'Long-term'])
 df['BALANCE_SEGMENT'] = pd.cut(df['BALANCE'], bins=[-1, 0, 100000, 1e7], 
