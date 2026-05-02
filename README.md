@@ -15,4 +15,4 @@ Analyzing customer churn patterns across European banking segments to identify h
 ## 🚀 Quick Start
 1. Install dependencies:
    ```bash
-   pip install -r requirements.txt
+   git push hf HEAD:main 
