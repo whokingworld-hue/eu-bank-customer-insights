@@ -1,0 +1,145 @@
+``python
+import streamlit as st
+import pandas as pd
+import plotly.express as px
+
+# Initialize app layout
+st.set_page_config(layout="wide", page_title="European Banking Churn Analytics")
+st.title("Customer Segmentation & Churn Pattern Analytics in European Banking")
+st.markdown("Analyze customer churn patterns across European banking segments")
+
+# File upload section
+with st.sidebar:
+    st.header("Data Configuration")
+    uploaded_file = st.file_uploader("Upload Bank Customer CSV", type="csv", icon="📂")
+    
+    if uploaded_file:
+        df = pd.read_csv(uploaded_file)
+        
+        # Preprocessing
+        with st.spinner('Processing data...'):
+            # Remove non-analytical fields
+            df = df.drop('Surname', axis=1, errors='ignore')
+            
+            # Create segmentation fields
+            df['Geography'] = df['Geography'].astype('category')
+            df['AgeGroup'] = pd.cut(df['Age'], bins=[0, 30, 45, 60, 100], 
+                                  labels=['<30', '30-45', '46-60', '60+'])
+            df['CreditScoreBand'] = pd.cut(df['CreditScore'], bins=[0, 500, 700, 850], 
+                                    labels=['Low', 'Medium', 'High'])
+            df['TenureGroup'] = pd.cut(df['Tenure'], bins=[0, 2, 5, 50], 
+                                    labels=['New', 'Mid-term', 'Long-term'])
+            df['BalanceSegment'] = pd.cut(df['Balance'], bins=[-1, 0, 100000, 1e6], 
+                                     labels=['Zero-balance', 'Low-balance', 'High-balance'])
+            st.success("Data processed successfully!")
+
+# Main analytics dashboard
+if uploaded_file:
+    with st.spinner("Generating analytics..."):
+        
+        # KPI Section - FIXED COLUMN NAMES
+        churn_rate = df['Exited'].mean() * 100  # Changed from 'Churn' to 'Exited'
+        high_value_churn = df[df['Balance'] > 100000]['Exited'].mean() * 100
+        active_churn = df[df['IsActiveMember'] == 1]['Exited'].mean() * 100  # 'IsActiveMember' exists
+        inactive_churn = df[df['IsActiveMember'] == 0]['Exited'].mean() * 100
+        
+        kpi1, kpi2, kpi3, kpi4 = st.columns(4)
+        kpi1.metric("Overall Churn Rate", f"{churn_rate:.2f}%", "Customers Lost", delta_color="inverse")
+        kpi2.metric("High-Value Churn", f"{high_value_churn:.2f}%", "Wealthy Clients", delta_color="inverse")
+        kpi3.metric("Active Member Churn", f"{active_churn:.2f}%", "Engaged Customers", delta_color="inverse")
+        kpi4.metric("Inactive Churn", f"{inactive_churn:.2f}%", "Dormant Accounts", delta_color="inverse")
+        
+        # Visualization Tabs
+        tab1, tab2, tab3, tab4 = st.tabs(["Geographic Analysis", "Demographic Analysis", 
+                                        "Financial Segmentation", "High-Value Churn"])
+        
+        with tab1:
+            col1, col2 = st.columns(2)
+            with col1:
+                st.subheader("Churn by Country")
+                geo_churn = df.groupby('Geography')['Exited'].mean().sort_values(ascending=False).reset_index()
+                fig = px.bar(geo_churn, x='Geography', y='Exited', 
+                            title="Churn Rate by Geography", 
+                            color='Geography', text_auto=True)
+                st.plotly_chart(fig, use_container_width=True)
+                
+            with col2:
+                st.subheader("Country-wise Churn Distribution")
+                geo_counts = df.groupby(['Geography', 'Exited']).size().unstack().fillna(0)
+                geo_pcts = geo_counts.div(geo_counts.sum(axis=1), axis=0).reset_index()
+                fig = px.bar(geo_pcts, x='Geography', y=[0, 1], 
+                            title="Churn vs Retention by Country",
+                            labels={'value': 'Percentage', 'variable': 'Status'},
+                            text_auto=True)
+                st.plotly_chart(fig, use_container_width=True)
+        
+        with tab2:
+            st.subheader("Churn by Age and Tenure")
+            age_trend = df.groupby('AgeGroup')['Exited'].mean().reset_index()
+            tenure_trend = df.groupby('TenureGroup')['Exited'].mean().reset_index()
+            
+            col1, col2 = st.columns(2)
+            with col1:
+                st.plotly_chart(px.bar(age_trend, x='AgeGroup', y='Exited', 
+                                      title="Churn by Age Group"), 
+                              use_container_width=True)
+            with col2:
+                st.plotly_chart(px.line(tenure_trend, x='TenureGroup', y='Exited', 
+                                      title="Churn Trend by Tenure"),
+                              use_container_width=True)
+            
+            # Age-Gender Churn Heatmap
+            st.subheader("Churn Across Demographic Segments")
+            demo_churn = df.groupby(['Geography', 'Gender', 'AgeGroup'])['Exited'].mean().unstack().reset_index()
+            fig = px.imshow(demo_churn.set_index(['Geography', 'Gender']).dropna(),
+                           labels=dict(x="Age Group", y="Segment", color="Churn Rate"),
+                           aspect="auto",
+                           title="Churn Heatmap: Geography, Gender & Age")
+            st.plotly_chart(fig, use_container_width=True)
+        
+        with tab3:
+            st.subheader("Financial Segmentation Analysis")
+            financial_churn = df.groupby(['CreditScoreBand', 'BalanceSegment'])['Exited'].mean().unstack()
+            fig = px.imshow(financial_churn, 
+                           labels=dict(x="Balance Segment", y="Credit Score", color="Churn Rate"),
+                           aspect="auto",
+                           title="Churn Patterns: Credit Score vs Balance")
+            st.plotly_chart(fig, use_container_width=True)
+            
+            # Product Distribution Analysis
+            prod_churn = df.groupby('NumOfProducts')['Exited'].mean().reset_index()
+            fig = px.bar(prod_churn, x='NumOfProducts', y='Exited',
+                        title="Churn Rate by Number of Banking Products",
+                        labels={'NumOfProducts': 'Number of Products'})
+            st.plotly_chart(fig, use_container_width=True)
+        
+        with tab4:
+            st.subheader("High-Value Customer Churn Analysis")
+            high_value = df[df['Balance'] > 100000]
+            hv_churn = high_value.groupby('Geography')['Exited'].mean().reset_index()
+            
+            col1, col2 = st.columns([1, 2])
+            with col1:
+                st.plotly_chart(px.pie(high_value, names='Geography', 
+                                      title="High-Value Customer Distribution"),
+                              use_container_width=True)
+                st.plotly_chart(px.bar(hv_churn, x='Geography', y='Exited',
+                                      title="Churn Rate Among High-Value Customers"),
+                              use_container_width=True)
+                
+            with col2:
+                fig = px.scatter(df, x='EstimatedSalary', y='Balance', 
+                               color='Exited', size='CreditScore',
+                               hover_data=['Age', 'Tenure', 'NumOfProducts'],
+                               title="Customer Churn: Salary vs Balance (Size = Credit Score)",
+                               labels={'Exited': 'Churned?', 'EstimatedSalary': 'Annual Salary'})
+                st.plotly_chart(fig, use_container_width=True)
+                
+            # Revenue Risk Analysis
+            st.subheader("Revenue at Risk")
+            total_balance = df.groupby('Exited')['Balance'].sum().reset_index()
+            total_balance['Percentage'] = total_balance['Balance'] / total_balance['Balance'].sum() * 100
+            fig = px.pie(total_balance, values='Percentage', names='Exited',
+                        title="Total Balance Distribution: Churned vs Active",
+                        hole=0.4)
+            st.plotly_chart(fig, use_container_width=True
