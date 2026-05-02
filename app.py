@@ -11,7 +11,7 @@ st.markdown("Analyze customer churn patterns across European banking segments")
 # File upload section
 with st.sidebar:
     st.header("Data Configuration")
-    uploaded_file = st.file_uploader("Upload Bank Customer CSV", type="csv", icon="📂")
+    uploaded_file = st.file_uploader("Upload Bank Customer CSV", [type="csv" ])
     
     if not uploaded_file:
         st.info("📤 Upload a CSV file to begin analysis")
