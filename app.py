@@ -1,4 +1,4 @@
-```python
+
 import streamlit as st
 import pandas as pd
 import plotly.express as px
@@ -178,4 +178,4 @@ except Exception as e:
     2. Check for missing values in critical columns
     3. Verify numerical columns don't contain text values
     """)
-```
+
